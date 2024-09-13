@@ -1,4 +1,4 @@
-After cloning the repository, run ```npm install``` to download the libraries.
+After cloning the repository, run ```npm install``` to download the libraries.\
 The second step is to initialize the environment file with your wallet address and private key using the following command:
 ```
 echo "PRIVATE_KEY='YOUR_PRIVATE_KEY'
