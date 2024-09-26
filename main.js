@@ -1,4 +1,5 @@
 const { ethers } = require("ethers");
+const axios = require("axios");
 require("dotenv").config();
 
 const provider = new ethers.JsonRpcProvider("https://rpc.taiko.xyz");
@@ -7,7 +8,7 @@ const wallets = [
   {
     address: process.env.ADDRESS,
     privateKey: process.env.PRIVATE_KEY,
-  }
+  },
 ];
 
 const WETH_ADDRESS = "0xa51894664a773981c6c112c43ce576f315d5b1b6";
@@ -32,6 +33,42 @@ async function getBalance(contract, address) {
     console.error(`Error getting balance: ${error.message}`);
     throw error;
   }
+}
+
+async function getETHPriceInUSDT() {
+  try {
+    const response = await axios.get(
+      "https://api.coingecko.com/api/v3/simple/price",
+      {
+        params: {
+          ids: "ethereum",
+          vs_currencies: "usd",
+        },
+      }
+    );
+
+    const ethPriceInUSD = response.data.ethereum.usd;
+    return ethPriceInUSD;
+  } catch (error) {
+    console.error(`Error fetching ETH price: ${error.message}`);
+    throw error;
+  }
+}
+
+async function getCombinedBalanceInUSDT(walletAddress) {
+  const wethContract = new ethers.Contract(WETH_ADDRESS, WETH_ABI, provider);
+  const [ethBalance, wethBalance, ethPrice] = await Promise.all([
+    provider.getBalance(walletAddress),
+    getBalance(wethContract, walletAddress),
+    getETHPriceInUSDT(),
+  ]);
+
+  const ethBalanceFormatted = ethers.formatEther(ethBalance);
+  const wethBalanceFormatted = ethers.formatEther(wethBalance);
+  const totalEth =
+    parseFloat(ethBalanceFormatted) + parseFloat(wethBalanceFormatted);
+
+  return totalEth * ethPrice;
 }
 
 async function wrapETH(contract, amount) {
@@ -75,22 +112,6 @@ async function performWrapsAndUnwraps(wallet) {
       3,
       6
     );
-
-    const [newEthBalance, newWethBalance] = await Promise.all([
-      provider.getBalance(wallet.address),
-      getBalance(wethContract, wallet.address),
-    ]);
-
-    console.log(
-      `Final ETH Balance for ${wallet.address}: ${ethers.formatEther(
-        newEthBalance
-      )}`
-    );
-    console.log(
-      `Final WETH Balance for ${wallet.address}: ${ethers.formatEther(
-        newWethBalance
-      )}`
-    );
   } catch (error) {
     console.error(
       `Error in main function for ${wallet.address}: ${error.message}`
@@ -116,10 +137,35 @@ async function main() {
 }
 
 async function runMultipleTimes(times) {
+  const initialBalances = await Promise.all(
+    wallets.map(async (wallet) => {
+      const balanceInUSDT = await getCombinedBalanceInUSDT(wallet.address);
+      console.log(
+        `Initial balance for ${wallet.address.slice(
+          0,
+          6
+        )}...${wallet.address.slice(-4)}: ${balanceInUSDT.toFixed(2)}$`
+      );
+      return balanceInUSDT;
+    })
+  );
+
   for (let i = 0; i < times; i++) {
-    console.log(`Running iteration ${i + 1}`);
     await main();
   }
+
+  const finalBalances = await Promise.all(
+    wallets.map(async (wallet) => {
+      const balanceInUSDT = await getCombinedBalanceInUSDT(wallet.address);
+      console.log(
+        `Final balance for ${wallet.address.slice(
+          0,
+          6
+        )}...${wallet.address.slice(-4)}: ${balanceInUSDT.toFixed(2)}$`
+      );
+      return balanceInUSDT;
+    })
+  );
 }
 
-runMultipleTimes(14); // More than 14 iterations achieve daily limit
+runMultipleTimes(10); // More than 14 iterations achieve daily limit
