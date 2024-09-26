@@ -168,4 +168,4 @@ async function runMultipleTimes(times) {
   );
 }
 
-runMultipleTimes(14); // More than 14 iterations achieve daily limit
+runMultipleTimes(20);
