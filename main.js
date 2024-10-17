@@ -1,13 +1,37 @@
 const { ethers } = require("ethers");
 const axios = require("axios");
-require("dotenv").config();
+require("dotenv").config({ path: __dirname + "/.env" });
 
 const provider = new ethers.JsonRpcProvider("https://rpc.taiko.xyz");
 
 const wallets = [
   {
-    address: process.env.ADDRESS,
-    privateKey: process.env.PRIVATE_KEY,
+    address: process.env.ADDRESS_1,
+    privateKey: process.env.PRIVATE_KEY_1,
+  },
+  {
+    address: process.env.ADDRESS_2,
+    privateKey: process.env.PRIVATE_KEY_2,
+  },
+  {
+    address: process.env.ADDRESS_3,
+    privateKey: process.env.PRIVATE_KEY_3,
+  },
+  {
+    address: process.env.ADDRESS_4,
+    privateKey: process.env.PRIVATE_KEY_4,
+  },
+  {
+    address: process.env.ADDRESS_5,
+    privateKey: process.env.PRIVATE_KEY_5,
+  },
+  {
+    address: process.env.ADDRESS_6,
+    privateKey: process.env.PRIVATE_KEY_6,
+  },
+  {
+    address: process.env.ADDRESS_7,
+    privateKey: process.env.PRIVATE_KEY_7,
   },
 ];
 
@@ -55,12 +79,11 @@ async function getETHPriceInUSDT() {
   }
 }
 
-async function getCombinedBalanceInUSDT(walletAddress) {
+async function getCombinedBalanceInUSDT(walletAddress, ethPrice) {
   const wethContract = new ethers.Contract(WETH_ADDRESS, WETH_ABI, provider);
-  const [ethBalance, wethBalance, ethPrice] = await Promise.all([
+  const [ethBalance, wethBalance] = await Promise.all([
     provider.getBalance(walletAddress),
     getBalance(wethContract, walletAddress),
-    getETHPriceInUSDT(),
   ]);
 
   const ethBalanceFormatted = ethers.formatEther(ethBalance);
@@ -137,9 +160,14 @@ async function main() {
 }
 
 async function runMultipleTimes(times) {
+  const ethPrice = await getETHPriceInUSDT();
+
   const initialBalances = await Promise.all(
     wallets.map(async (wallet) => {
-      const balanceInUSDT = await getCombinedBalanceInUSDT(wallet.address);
+      const balanceInUSDT = await getCombinedBalanceInUSDT(
+        wallet.address,
+        ethPrice
+      );
       console.log(
         `Initial balance for ${wallet.address.slice(
           0,
@@ -156,7 +184,10 @@ async function runMultipleTimes(times) {
 
   const finalBalances = await Promise.all(
     wallets.map(async (wallet) => {
-      const balanceInUSDT = await getCombinedBalanceInUSDT(wallet.address);
+      const balanceInUSDT = await getCombinedBalanceInUSDT(
+        wallet.address,
+        ethPrice
+      );
       console.log(
         `Final balance for ${wallet.address.slice(
           0,
